@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use App\Traits\MultiTenantTrait;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class InvoiceItem extends Model
 {
-    use MultiTenantTrait;
+    use MultiTenantTrait, HasFactory;
 
     protected $fillable = [
         'invoice_id',

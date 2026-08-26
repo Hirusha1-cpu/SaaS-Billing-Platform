@@ -6,10 +6,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Traits\MultiTenantTrait;
 use App\Traits\AuditLogTrait;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Invoice extends Model
 {
-    use SoftDeletes, MultiTenantTrait, AuditLogTrait;
+    use SoftDeletes, MultiTenantTrait, AuditLogTrait, HasFactory;
 
     protected $fillable = [
         'company_id',

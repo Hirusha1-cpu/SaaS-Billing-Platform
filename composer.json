@@ -20,7 +20,6 @@
         "spatie/laravel-permission": "^8.3"
     },
     "require-dev": {
-        "barryvdh/laravel-debugbar": "^4.4",
         "fakerphp/faker": "^1.23",
         "laravel/breeze": "^2.4",
         "laravel/pail": "^1.2.5",
@@ -28,7 +27,7 @@
         "laravel/pint": "^1.27",
         "mockery/mockery": "^1.6",
         "nunomaduro/collision": "^8.6",
-        "phpunit/phpunit": "^12.5.12"
+        "phpunit/phpunit": "^12.5"
     },
     "autoload": {
         "psr-4": {

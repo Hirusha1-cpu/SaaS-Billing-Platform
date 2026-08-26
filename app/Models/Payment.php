@@ -5,10 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use App\Traits\MultiTenantTrait;
 use App\Traits\AuditLogTrait;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Payment extends Model
 {
-    use MultiTenantTrait, AuditLogTrait;
+    use MultiTenantTrait, AuditLogTrait, HasFactory;
 
     protected $fillable = [
         'company_id',

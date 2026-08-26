@@ -5,10 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Traits\MultiTenantTrait;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Customer extends Model
 {
-    use SoftDeletes, MultiTenantTrait;
+    use SoftDeletes, MultiTenantTrait, HasFactory;
 
     protected $fillable = [
         'company_id',

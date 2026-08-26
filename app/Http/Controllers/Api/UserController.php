@@ -297,7 +297,12 @@ class UserController extends Controller
      */
     public function profile()
     {
-        $user = Auth::user()->load(['company', 'permissions']);
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+        
+        // Intelephense now safely recognizes the Eloquent load() method!
+        $user->load(['company', 'permissions']);
+        
         return new UserResource($user);
     }
 

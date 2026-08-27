@@ -2,6 +2,5 @@
 
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+// Catch all routes - React SPA
+Route::view('/{any?}', 'app')->where('any', '.*');

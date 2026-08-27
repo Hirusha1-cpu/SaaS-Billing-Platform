@@ -3,7 +3,7 @@
   "builds": [
     {
       "src": "public/index.php",
-      "use": "@vercel/php@1.0.0"
+      "use": "@vercel/php"
     },
     {
       "src": "package.json",
@@ -21,14 +21,6 @@
     {
       "src": "/storage/(.*)",
       "dest": "/public/storage/$1"
-    },
-    {
-      "src": "/favicon.ico",
-      "dest": "/public/favicon.ico"
-    },
-    {
-      "src": "/robots.txt",
-      "dest": "/public/robots.txt"
     },
     {
       "src": "/(.*)",

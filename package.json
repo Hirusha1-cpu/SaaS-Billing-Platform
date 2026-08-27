@@ -4,7 +4,8 @@
     "type": "module",
     "scripts": {
         "build": "vite build",
-        "dev": "vite"
+        "dev": "vite",
+        "vercel-build": "composer install --no-dev --optimize-autoloader && npm run build"
     },
     "devDependencies": {
         "@tailwindcss/vite": "^4.0.0",

@@ -75,7 +75,8 @@
         ],
         "pre-package-uninstall": [
             "Illuminate\\Foundation\\ComposerScripts::prePackageUninstall"
-        ]
+        ],
+        "vercel-build": "composer install --no-dev --optimize-autoloader && npm run build"
     },
     "extra": {
         "laravel": {

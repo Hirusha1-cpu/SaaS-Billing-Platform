@@ -40,10 +40,23 @@ class AuthController extends Controller
             'password' => Hash::make($request->password),
             'company_id' => $company->id,
             'role' => 'admin',
+            'is_active' => true,
         ]);
 
-        // Assign admin role
-        $user->assignRole('admin');
+        // Assign role using Spatie (check if role exists first)
+        try {
+            $role = Role::where('name', 'admin')->first();
+            if ($role) {
+                $user->assignRole('admin');
+            } else {
+                // If role doesn't exist, create it
+                $role = Role::create(['name' => 'admin', 'guard_name' => 'web']);
+                $user->assignRole('admin');
+            }
+        } catch (\Exception $e) {
+            // Log error but continue
+            \Log::error('Role assignment failed: ' . $e->getMessage());
+        }
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
@@ -106,44 +119,6 @@ class AuthController extends Controller
         return response()->json([
             'user' => $request->user(),
             'company' => $request->user()->company,
-            'permissions' => $request->user()->getAllPermissions(),
         ]);
-    }
-
-    public function changePassword(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'current_password' => 'required',
-            'new_password' => 'required|min:8|confirmed',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
-        $user = $request->user();
-
-        if (!Hash::check($request->current_password, $user->password)) {
-            return response()->json(['error' => 'Current password is incorrect'], 401);
-        }
-
-        $user->password = Hash::make($request->new_password);
-        $user->save();
-
-        return response()->json(['message' => 'Password changed successfully']);
-    }
-
-    public function forgotPassword(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'email' => 'required|email|exists:users',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
-        // Send password reset email (implement later)
-        return response()->json(['message' => 'Password reset link sent']);
     }
 }

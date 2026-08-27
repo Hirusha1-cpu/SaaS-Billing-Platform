@@ -3,7 +3,10 @@
   "builds": [
     {
       "src": "public/index.php",
-      "use": "@vercel/php"
+      "use": "@vercel/php",
+      "config": {
+        "phpVersion": "8.3"
+      }
     },
     {
       "src": "package.json",
@@ -23,6 +26,14 @@
       "dest": "/public/storage/$1"
     },
     {
+      "src": "/favicon.ico",
+      "dest": "/public/favicon.ico"
+    },
+    {
+      "src": "/robots.txt",
+      "dest": "/public/robots.txt"
+    },
+    {
       "src": "/(.*)",
       "dest": "/public/index.php"
     }
@@ -30,9 +41,9 @@
   "env": {
     "APP_ENV": "production",
     "APP_DEBUG": "false",
-    "APP_URL": "https://your-app.vercel.app",
+    "APP_URL": "https://my-saas-invoice-app.vercel.app",
     "SESSION_DRIVER": "cookie",
-    "CACHE_DRIVER": "redis",
+    "CACHE_DRIVER": "file",
     "QUEUE_CONNECTION": "sync"
   }
 }

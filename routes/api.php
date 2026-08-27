@@ -36,6 +36,7 @@ Route::middleware(['auth:sanctum', 'multitenant'])->group(function () {
     Route::get('/dashboard/stats', [DashboardController::class, 'stats']);
     Route::get('/dashboard/recent-invoices', [DashboardController::class, 'recentInvoices']);
     Route::get('/dashboard/activity', [DashboardController::class, 'activity']);
+    Route::get('/dashboard/summary', [DashboardController::class, 'summary']);
 
     // Invoice Routes
     Route::apiResource('invoices', InvoiceController::class);
@@ -70,6 +71,7 @@ Route::middleware(['auth:sanctum', 'multitenant'])->group(function () {
     Route::post('ai/generate-invoice', [AIController::class, 'generateInvoice']);
     Route::post('ai/generate-reminder/{invoice}', [AIController::class, 'generateReminder']);
     Route::get('ai/insights', [AIController::class, 'getInsights']);
+    Route::post('/ai/insights', [AIController::class, 'getInsights']); 
     Route::post('ai/parse-document', [AIController::class, 'parseDocument']);
     Route::post('ai/suggest-items', [AIController::class, 'suggestItems']);
 

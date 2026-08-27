@@ -4,8 +4,12 @@ import { Spinner } from '../../Components/Common/Spinner';
 import api from '../../Utils/api';
 import { formatCurrency } from '../../Utils/helpers';
 import { useAuth } from '../../Hooks/useAuth';
+import { Button } from '../../Components/Common/Button';
+import { useNavigate } from 'react-router-dom';
+import { SparklesIcon } from '@heroicons/react/24/outline';
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -42,7 +46,13 @@ const Dashboard = () => {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Dashboard</h1>
+        <Button onClick={() => navigate('/insights')} variant="outline">
+          <SparklesIcon className="w-4 h-4 mr-2" />
+          AI Insights
+        </Button>
+      </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {statCards.map((stat, idx) => (

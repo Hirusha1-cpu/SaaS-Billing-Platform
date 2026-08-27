@@ -16,7 +16,7 @@ const navigation = [
   { name: 'Payments', href: '/payments', icon: CreditCardIcon },
   { name: 'Subscriptions', href: '/subscriptions', icon: CurrencyDollarIcon },
   { name: 'Customers', href: '/customers', icon: UserGroupIcon },
-  { name: 'AI Insights', href: '/insights', icon: SparklesIcon },
+  { name: 'AI Insights', href: '/insights', icon: SparklesIcon },  // <-- මෙක තියෙනවා
   { name: 'Settings', href: '/settings', icon: Cog6ToothIcon },
 ];
 

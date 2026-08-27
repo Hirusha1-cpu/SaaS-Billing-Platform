@@ -24,6 +24,7 @@ import SubscriptionCreate from '../Pages/Subscriptions/Create';
 import CustomerIndex from '../Pages/Customers/Index';
 import CustomerCreate from '../Pages/Customers/Create';
 import Settings from '../Pages/Settings/Index';
+import InsightsPage from '../Pages/Insights/Index';  // <-- මෙක add කරන්න
 
 const PrivateRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -64,6 +65,9 @@ const AppRoutes = () => {
         {/* Customers */}
         <Route path="/customers" element={<CustomerIndex />} />
         <Route path="/customers/create" element={<CustomerCreate />} />
+        
+        {/* AI Insights - මෙක add කරන්න */}
+        <Route path="/insights" element={<InsightsPage />} />
         
         {/* Settings */}
         <Route path="/settings" element={<Settings />} />

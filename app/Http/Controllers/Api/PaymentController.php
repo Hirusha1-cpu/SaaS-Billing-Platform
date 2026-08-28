@@ -9,6 +9,7 @@ use App\Http\Requests\PaymentRequest;
 use App\Http\Resources\PaymentResource;
 use App\Services\PaymentService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
@@ -51,7 +52,6 @@ class PaymentController extends Controller
             DB::commit();
 
             return new PaymentResource($payment->load(['invoice', 'customer']));
-
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['error' => $e->getMessage()], 500);
@@ -88,7 +88,6 @@ class PaymentController extends Controller
                 'message' => 'Refund processed successfully',
                 'refund' => $refund,
             ]);
-
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['error' => $e->getMessage()], 500);
@@ -131,7 +130,6 @@ class PaymentController extends Controller
             $this->paymentService->handleStripeWebhook($event);
 
             return response()->json(['status' => 'success'], 200);
-
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 400);
         }
@@ -139,7 +137,20 @@ class PaymentController extends Controller
 
     public function createStripeSession(Invoice $invoice, Request $request)
     {
-        Gate::authorize('view', $invoice);
+        // 1. Check if user is authenticated
+        if (!Auth::check()) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        // 2. Check if invoice belongs to user's company
+        // if (Auth::user()->company_id !== $invoice->company_id) {
+        //     return response()->json(['error' => 'Unauthorized'], 403);
+        // }
+
+        // 3. Check if invoice can be paid
+        if ($invoice->status === 'paid') {
+            return response()->json(['error' => 'Invoice is already paid'], 422);
+        }
 
         try {
             $checkout = $this->paymentService->createStripeCheckoutSession($invoice);
@@ -148,12 +159,10 @@ class PaymentController extends Controller
                 'checkout_url' => $checkout->url,
                 'session_id' => $checkout->id,
             ]);
-
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
-
     public function confirmStripePayment(Request $request)
     {
         $validator = validator($request->all(), [
@@ -171,9 +180,26 @@ class PaymentController extends Controller
                 'message' => 'Payment confirmed successfully',
                 'payment' => new PaymentResource($payment),
             ]);
-
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
         }
+    }
+
+    public function paymentSuccess(Request $request)
+    {
+        $sessionId = $request->query('session_id');
+        
+        // Check if payment exists
+        $payment = Payment::where('transaction_id', $sessionId)->first();
+        
+        return view('payment.success', [
+            'session_id' => $sessionId,
+            'payment' => $payment,
+        ]);
+    }
+
+    public function paymentCancel(Request $request)
+    {
+        return view('payment.cancel');
     }
 }

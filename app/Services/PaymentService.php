@@ -53,10 +53,26 @@ class PaymentService
             return $payment;
         });
     }
-
     public function createStripeCheckoutSession(Invoice $invoice)
     {
         $baseUrl = config('app.url');
+
+        // Load customer relationship if not loaded
+        if (!$invoice->relationLoaded('customer')) {
+            $invoice->load('customer');
+        }
+
+        // Get customer email - safe check
+        $customerEmail = $invoice->customer?->email ?? 'customer@example.com';
+        $customerName = $invoice->customer?->name ?? 'Customer';
+
+        // Log for debugging
+        Log::info('Creating Stripe session', [
+            'invoice_id' => $invoice->id,
+            'customer_id' => $invoice->customer_id,
+            'customer_email' => $customerEmail,
+            'customer_name' => $customerName,
+        ]);
 
         $session = Session::create([
             'payment_method_types' => ['card'],
@@ -66,7 +82,7 @@ class PaymentService
                         'currency' => strtolower($invoice->currency ?? 'lkr'),
                         'product_data' => [
                             'name' => 'Invoice #' . $invoice->invoice_number,
-                            'description' => 'Payment for invoice ' . $invoice->invoice_number,
+                            'description' => 'Payment for invoice ' . $invoice->invoice_number . ' - ' . $customerName,
                         ],
                         'unit_amount' => (int) ($invoice->balance_due * 100),
                     ],
@@ -80,16 +96,53 @@ class PaymentService
                 'invoice_id' => $invoice->id,
                 'user_id' => Auth::id(),
             ],
-            'customer_email' => $invoice->customer->email,
+            'customer_email' => $customerEmail,
         ]);
 
         Log::info('Stripe checkout session created', [
             'session_id' => $session->id,
             'invoice_id' => $invoice->id,
+            'customer_email' => $customerEmail,
         ]);
 
         return $session;
     }
+    // public function createStripeCheckoutSession(Invoice $invoice)
+    // {
+    //     $baseUrl = config('app.url');
+
+    //     $session = Session::create([
+    //         'payment_method_types' => ['card'],
+    //         'line_items' => [
+    //             [
+    //                 'price_data' => [
+    //                     'currency' => strtolower($invoice->currency ?? 'lkr'),
+    //                     'product_data' => [
+    //                         'name' => 'Invoice #' . $invoice->invoice_number,
+    //                         'description' => 'Payment for invoice ' . $invoice->invoice_number,
+    //                     ],
+    //                     'unit_amount' => (int) ($invoice->balance_due * 100),
+    //                 ],
+    //                 'quantity' => 1,
+    //             ],
+    //         ],
+    //         'mode' => 'payment',
+    //         'success_url' => $baseUrl . '/payment/success?session_id={CHECKOUT_SESSION_ID}',
+    //         'cancel_url' => $baseUrl . '/payment/cancel',
+    //         'metadata' => [
+    //             'invoice_id' => $invoice->id,
+    //             'user_id' => Auth::id(),
+    //         ],
+    //         'customer_email' => $invoice->customer->email,
+    //     ]);
+
+    //     Log::info('Stripe checkout session created', [
+    //         'session_id' => $session->id,
+    //         'invoice_id' => $invoice->id,
+    //     ]);
+
+    //     return $session;
+    // }
 
     public function confirmStripePayment($paymentIntentId)
     {
@@ -114,7 +167,7 @@ class PaymentService
             // Update invoice
             $invoice = $payment->invoice;
             $remaining = $invoice->balance_due - $payment->amount;
-            
+
             $invoice->update([
                 'status' => $remaining <= 0 ? 'paid' : 'partially_paid',
                 'paid_amount' => $invoice->paid_amount + $payment->amount,
@@ -154,34 +207,93 @@ class PaymentService
     }
 
     protected function handleCheckoutCompleted($event)
-    {
-        $session = $event->data->object;
-        $invoiceId = $session->metadata->invoice_id ?? null;
+{
+    $session = $event->data->object;
+    $invoiceId = $session->metadata->invoice_id ?? null;
+    
+    // Log for debugging
+    \Log::info('Webhook - Checkout completed received', [
+        'invoice_id' => $invoiceId,
+        'session_id' => $session->id,
+        'payment_status' => $session->payment_status,
+    ]);
 
-        if ($invoiceId) {
-            $payment = Payment::create([
-                'company_id' => Auth::user()->company_id ?? null,
-                'invoice_id' => $invoiceId,
-                'amount' => $session->amount_total / 100,
-                'currency' => strtoupper($session->currency),
-                'payment_method' => 'stripe',
-                'status' => 'pending',
-                'transaction_id' => $session->id,
-                'stripe_payment_intent_id' => $session->payment_intent,
-                'payment_date' => now(),
-            ]);
+    if ($invoiceId) {
+        // Check if payment already exists
+        $existingPayment = Payment::where('transaction_id', $session->id)->first();
+        
+        if (!$existingPayment) {
+            // Find invoice
+            $invoice = Invoice::find($invoiceId);
+            
+            if ($invoice) {
+                $amount = $session->amount_total / 100;
+                $currency = strtoupper($session->currency);
+                
+                // Create payment
+                $payment = Payment::create([
+                    'company_id' => $invoice->company_id,
+                    'invoice_id' => $invoice->id,
+                    'customer_id' => $invoice->customer_id,
+                    'amount' => $amount,
+                    'currency' => $currency,
+                    'payment_method' => 'stripe',
+                    'status' => 'completed',
+                    'transaction_id' => $session->id,
+                    'stripe_payment_intent_id' => $session->payment_intent,
+                    'stripe_charge_id' => null,
+                    'receipt_url' => null,
+                    'payment_date' => now(),
+                    'notes' => 'Payment for invoice #' . $invoice->invoice_number,
+                ]);
 
-            Log::info('Payment recorded from webhook', [
-                'payment_id' => $payment->id,
-                'invoice_id' => $invoiceId,
-            ]);
+                // Update invoice
+                $remaining = $invoice->balance_due - $amount;
+                $invoice->update([
+                    'status' => $remaining <= 0 ? 'paid' : 'partially_paid',
+                    'paid_amount' => $invoice->paid_amount + $amount,
+                    'balance_due' => max(0, $remaining),
+                    'paid_at' => $remaining <= 0 ? now() : null,
+                ]);
+
+                Log::info('Payment processed from webhook', [
+                    'payment_id' => $payment->id,
+                    'invoice_id' => $invoiceId,
+                    'amount' => $amount,
+                ]);
+            }
         }
     }
+}
+    // protected function handleCheckoutCompleted($event)
+    // {
+    //     $session = $event->data->object;
+    //     $invoiceId = $session->metadata->invoice_id ?? null;
+
+    //     if ($invoiceId) {
+    //         $payment = Payment::create([
+    //             'company_id' => Auth::user()->company_id ?? null,
+    //             'invoice_id' => $invoiceId,
+    //             'amount' => $session->amount_total / 100,
+    //             'currency' => strtoupper($session->currency),
+    //             'payment_method' => 'stripe',
+    //             'status' => 'pending',
+    //             'transaction_id' => $session->id,
+    //             'stripe_payment_intent_id' => $session->payment_intent,
+    //             'payment_date' => now(),
+    //         ]);
+
+    //         Log::info('Payment recorded from webhook', [
+    //             'payment_id' => $payment->id,
+    //             'invoice_id' => $invoiceId,
+    //         ]);
+    //     }
+    // }
 
     protected function handlePaymentSucceeded($event)
     {
         $paymentIntent = $event->data->object;
-        
+
         $payment = Payment::where('stripe_payment_intent_id', $paymentIntent->id)->first();
 
         if ($payment) {
@@ -213,7 +325,7 @@ class PaymentService
     protected function handlePaymentFailed($event)
     {
         $paymentIntent = $event->data->object;
-        
+
         $payment = Payment::where('stripe_payment_intent_id', $paymentIntent->id)->first();
 
         if ($payment) {
@@ -248,7 +360,7 @@ class PaymentService
         // Process refund with Stripe
         try {
             $stripe = new \Stripe\StripeClient(config('services.stripe.secret'));
-            
+
             $refund = $stripe->refunds->create([
                 'charge' => $payment->stripe_charge_id,
                 'amount' => (int) ($refundAmount * 100),
@@ -269,7 +381,6 @@ class PaymentService
             ]);
 
             return $refund;
-
         } catch (\Exception $e) {
             Log::error('Refund failed', [
                 'payment_id' => $payment->id,

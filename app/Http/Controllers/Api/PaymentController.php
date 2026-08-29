@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 
 class PaymentController extends Controller
 {
@@ -119,37 +120,77 @@ class PaymentController extends Controller
     {
         $payload = $request->getContent();
         $sigHeader = $request->header('Stripe-Signature');
+        $webhookSecret = config('services.stripe.webhook_secret');
+
+        // 🔍 DEBUG LOGS
+        Log::info('🔔 Webhook received', [
+            'payload_length' => strlen($payload),
+            'sig_header_exists' => !empty($sigHeader),
+            'webhook_secret_exists' => !empty($webhookSecret),
+            'webhook_secret' => substr($webhookSecret, 0, 20) . '...',
+        ]);
 
         try {
             $event = \Stripe\Webhook::constructEvent(
                 $payload,
                 $sigHeader,
-                config('services.stripe.webhook_secret')
+                $webhookSecret
             );
 
+            Log::info('✅ Webhook verified successfully', [
+                'type' => $event->type,
+                'id' => $event->id,
+            ]);
+
+            // Process the event
             $this->paymentService->handleStripeWebhook($event);
 
             return response()->json(['status' => 'success'], 200);
-        } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 400);
+        } catch (\UnexpectedValueException $e) {
+            // Invalid payload
+            Log::error('❌ Invalid webhook payload', [
+                'error' => $e->getMessage(),
+            ]);
+            return response()->json(['error' => 'Invalid payload'], 400);
+        } catch (\Stripe\Exception\SignatureVerificationException $e) {
+            // Invalid signature
+            Log::error('❌ Invalid webhook signature', [
+                'error' => $e->getMessage(),
+                'webhook_secret' => $webhookSecret,
+            ]);
+            return response()->json(['error' => 'Invalid signature'], 400);
         }
     }
-
-    public function createStripeSession(Invoice $invoice, Request $request)
+    public function createStripeSession(Request $request)
     {
-        // 1. Check if user is authenticated
-        if (!Auth::check()) {
-            return response()->json(['error' => 'Unauthorized'], 401);
+        // Get invoice_id from request
+        $invoiceId = $request->input('invoice_id');
+
+        // Debug log
+        Log::info('Create Stripe Session called', [
+            'invoice_id' => $invoiceId,
+            'all_input' => $request->all(),
+        ]);
+
+        if (!$invoiceId) {
+            return response()->json(['error' => 'Invoice ID is required'], 422);
         }
 
-        // 2. Check if invoice belongs to user's company
-        // if (Auth::user()->company_id !== $invoice->company_id) {
-        //     return response()->json(['error' => 'Unauthorized'], 403);
-        // }
+        // Load invoice with customer
+        $invoice = Invoice::with('customer')->find($invoiceId);
 
-        // 3. Check if invoice can be paid
+        if (!$invoice) {
+            return response()->json(['error' => 'Invoice not found'], 404);
+        }
+
+        // Check if invoice can be paid
         if ($invoice->status === 'paid') {
             return response()->json(['error' => 'Invoice is already paid'], 422);
+        }
+
+        // Check if invoice belongs to user's company
+        if (Auth::check() && Auth::user()->company_id !== $invoice->company_id) {
+            return response()->json(['error' => 'Unauthorized'], 403);
         }
 
         try {
@@ -160,9 +201,41 @@ class PaymentController extends Controller
                 'session_id' => $checkout->id,
             ]);
         } catch (\Exception $e) {
+            Log::error('Stripe session creation failed', [
+                'error' => $e->getMessage(),
+                'invoice_id' => $invoiceId,
+            ]);
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
+    // public function createStripeSession(Invoice $invoice, Request $request)
+    // {
+    //     // 1. Check if user is authenticated
+    //     if (!Auth::check()) {
+    //         return response()->json(['error' => 'Unauthorized'], 401);
+    //     }
+
+    //     // 2. Check if invoice belongs to user's company
+    //     // if (Auth::user()->company_id !== $invoice->company_id) {
+    //     //     return response()->json(['error' => 'Unauthorized'], 403);
+    //     // }
+
+    //     // 3. Check if invoice can be paid
+    //     if ($invoice->status === 'paid') {
+    //         return response()->json(['error' => 'Invoice is already paid'], 422);
+    //     }
+
+    //     try {
+    //         $checkout = $this->paymentService->createStripeCheckoutSession($invoice);
+
+    //         return response()->json([
+    //             'checkout_url' => $checkout->url,
+    //             'session_id' => $checkout->id,
+    //         ]);
+    //     } catch (\Exception $e) {
+    //         return response()->json(['error' => $e->getMessage()], 500);
+    //     }
+    // }
     public function confirmStripePayment(Request $request)
     {
         $validator = validator($request->all(), [
@@ -188,10 +261,10 @@ class PaymentController extends Controller
     public function paymentSuccess(Request $request)
     {
         $sessionId = $request->query('session_id');
-        
+
         // Check if payment exists
         $payment = Payment::where('transaction_id', $sessionId)->first();
-        
+
         return view('payment.success', [
             'session_id' => $sessionId,
             'payment' => $payment,

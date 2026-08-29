@@ -207,64 +207,64 @@ class PaymentService
     }
 
     protected function handleCheckoutCompleted($event)
-{
-    $session = $event->data->object;
-    $invoiceId = $session->metadata->invoice_id ?? null;
-    
-    // Log for debugging
-    \Log::info('Webhook - Checkout completed received', [
-        'invoice_id' => $invoiceId,
-        'session_id' => $session->id,
-        'payment_status' => $session->payment_status,
-    ]);
+    {
+        $session = $event->data->object;
+        $invoiceId = $session->metadata->invoice_id ?? null;
 
-    if ($invoiceId) {
-        // Check if payment already exists
-        $existingPayment = Payment::where('transaction_id', $session->id)->first();
-        
-        if (!$existingPayment) {
-            // Find invoice
-            $invoice = Invoice::find($invoiceId);
-            
-            if ($invoice) {
-                $amount = $session->amount_total / 100;
-                $currency = strtoupper($session->currency);
-                
-                // Create payment
-                $payment = Payment::create([
-                    'company_id' => $invoice->company_id,
-                    'invoice_id' => $invoice->id,
-                    'customer_id' => $invoice->customer_id,
-                    'amount' => $amount,
-                    'currency' => $currency,
-                    'payment_method' => 'stripe',
-                    'status' => 'completed',
-                    'transaction_id' => $session->id,
-                    'stripe_payment_intent_id' => $session->payment_intent,
-                    'stripe_charge_id' => null,
-                    'receipt_url' => null,
-                    'payment_date' => now(),
-                    'notes' => 'Payment for invoice #' . $invoice->invoice_number,
-                ]);
+        // Log for debugging
+        Log::info('Webhook - Checkout completed received', [
+            'invoice_id' => $invoiceId,
+            'session_id' => $session->id,
+            'payment_status' => $session->payment_status,
+        ]);
 
-                // Update invoice
-                $remaining = $invoice->balance_due - $amount;
-                $invoice->update([
-                    'status' => $remaining <= 0 ? 'paid' : 'partially_paid',
-                    'paid_amount' => $invoice->paid_amount + $amount,
-                    'balance_due' => max(0, $remaining),
-                    'paid_at' => $remaining <= 0 ? now() : null,
-                ]);
+        if ($invoiceId) {
+            // Check if payment already exists
+            $existingPayment = Payment::where('transaction_id', $session->id)->first();
 
-                Log::info('Payment processed from webhook', [
-                    'payment_id' => $payment->id,
-                    'invoice_id' => $invoiceId,
-                    'amount' => $amount,
-                ]);
+            if (!$existingPayment) {
+                // Find invoice
+                $invoice = Invoice::find($invoiceId);
+
+                if ($invoice) {
+                    $amount = $session->amount_total / 100;
+                    $currency = strtoupper($session->currency);
+
+                    // Create payment
+                    $payment = Payment::create([
+                        'company_id' => $invoice->company_id,
+                        'invoice_id' => $invoice->id,
+                        'customer_id' => $invoice->customer_id,
+                        'amount' => $amount,
+                        'currency' => $currency,
+                        'payment_method' => 'stripe',
+                        'status' => 'completed',
+                        'transaction_id' => $session->id,
+                        'stripe_payment_intent_id' => $session->payment_intent,
+                        'stripe_charge_id' => null,
+                        'receipt_url' => null,
+                        'payment_date' => now(),
+                        'notes' => 'Payment for invoice #' . $invoice->invoice_number,
+                    ]);
+
+                    // Update invoice
+                    $remaining = $invoice->balance_due - $amount;
+                    $invoice->update([
+                        'status' => $remaining <= 0 ? 'paid' : 'partially_paid',
+                        'paid_amount' => $invoice->paid_amount + $amount,
+                        'balance_due' => max(0, $remaining),
+                        'paid_at' => $remaining <= 0 ? now() : null,
+                    ]);
+
+                    Log::info('Payment processed from webhook', [
+                        'payment_id' => $payment->id,
+                        'invoice_id' => $invoiceId,
+                        'amount' => $amount,
+                    ]);
+                }
             }
         }
     }
-}
     // protected function handleCheckoutCompleted($event)
     // {
     //     $session = $event->data->object;

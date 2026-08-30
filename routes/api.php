@@ -24,6 +24,8 @@ Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/webhook/stripe', [PaymentController::class, 'processStripeWebhook'])
     ->name('stripe.webhook');
 
+// Route::post('/api/webhook/stripe', [PaymentController::class, 'processStripeWebhook']);
+
 // Protected Routes
 Route::middleware(['auth:sanctum', 'multitenant'])->group(function () {
 

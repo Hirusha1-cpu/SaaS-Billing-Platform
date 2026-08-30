@@ -118,6 +118,7 @@ class PaymentController extends Controller
 
     public function processStripeWebhook(Request $request)
     {
+        Log::info('started');
         $payload = $request->getContent();
         $sigHeader = $request->header('Stripe-Signature');
         $webhookSecret = config('services.stripe.webhook_secret');

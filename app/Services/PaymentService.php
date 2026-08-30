@@ -54,59 +54,62 @@ class PaymentService
         });
     }
     public function createStripeCheckoutSession(Invoice $invoice)
-    {
-        $baseUrl = config('app.url');
+{
+    $baseUrl = config('app.url');
 
-        // Load customer relationship if not loaded
-        if (!$invoice->relationLoaded('customer')) {
-            $invoice->load('customer');
-        }
-
-        // Get customer email - safe check
-        $customerEmail = $invoice->customer?->email ?? 'customer@example.com';
-        $customerName = $invoice->customer?->name ?? 'Customer';
-
-        // Log for debugging
-        Log::info('Creating Stripe session', [
-            'invoice_id' => $invoice->id,
-            'customer_id' => $invoice->customer_id,
-            'customer_email' => $customerEmail,
-            'customer_name' => $customerName,
-        ]);
-
-        $session = Session::create([
-            'payment_method_types' => ['card'],
-            'line_items' => [
-                [
-                    'price_data' => [
-                        'currency' => strtolower($invoice->currency ?? 'lkr'),
-                        'product_data' => [
-                            'name' => 'Invoice #' . $invoice->invoice_number,
-                            'description' => 'Payment for invoice ' . $invoice->invoice_number . ' - ' . $customerName,
-                        ],
-                        'unit_amount' => (int) ($invoice->balance_due * 100),
-                    ],
-                    'quantity' => 1,
-                ],
-            ],
-            'mode' => 'payment',
-            'success_url' => $baseUrl . '/payment/success?session_id={CHECKOUT_SESSION_ID}',
-            'cancel_url' => $baseUrl . '/payment/cancel',
-            'metadata' => [
-                'invoice_id' => $invoice->id,
-                'user_id' => Auth::id(),
-            ],
-            'customer_email' => $customerEmail,
-        ]);
-
-        Log::info('Stripe checkout session created', [
-            'session_id' => $session->id,
-            'invoice_id' => $invoice->id,
-            'customer_email' => $customerEmail,
-        ]);
-
-        return $session;
+    // Load customer relationship if not loaded
+    if (!$invoice->relationLoaded('customer')) {
+        $invoice->load('customer');
     }
+
+    // Get customer email - safe check
+    $customerEmail = $invoice->customer?->email ?? 'customer@example.com';
+    $customerName = $invoice->customer?->name ?? 'Customer';
+
+    // 🔥 METADATA - invoice_id එක හරියට set කරන්න!
+    $metadata = [
+        'invoice_id' => (string) $invoice->id,
+        'user_id' => (string) Auth::id(),
+        'company_id' => (string) $invoice->company_id,
+    ];
+
+    // Log for debugging
+    Log::info('Creating Stripe session with metadata', [
+        'invoice_id' => $invoice->id,
+        'metadata' => $metadata,
+    ]);
+
+    $session = Session::create([
+        'payment_method_types' => ['card'],
+        'line_items' => [
+            [
+                'price_data' => [
+                    'currency' => strtolower($invoice->currency ?? 'lkr'),
+                    'product_data' => [
+                        'name' => 'Invoice #' . $invoice->invoice_number,
+                        'description' => 'Payment for invoice ' . $invoice->invoice_number . ' - ' . $customerName,
+                    ],
+                    'unit_amount' => (int) ($invoice->balance_due * 100),
+                ],
+                'quantity' => 1,
+            ],
+        ],
+        'mode' => 'payment',
+        'success_url' => $baseUrl . '/payment/success?session_id={CHECKOUT_SESSION_ID}',
+        'cancel_url' => $baseUrl . '/payment/cancel',
+        'metadata' => $metadata, 
+        'customer_email' => $customerEmail,
+    ]);
+
+    Log::info('Stripe checkout session created', [
+        'session_id' => $session->id,
+        'invoice_id' => $invoice->id,
+        'customer_email' => $customerEmail,
+        'metadata' => $session->metadata,  
+    ]);
+
+    return $session;
+}
     // public function createStripeCheckoutSession(Invoice $invoice)
     // {
     //     $baseUrl = config('app.url');
@@ -188,6 +191,10 @@ class PaymentService
 
     public function handleStripeWebhook($event)
     {
+        Log::info('🔄 Processing webhook event', [
+        'type' => $event->type,
+        'id' => $event->id,
+    ]);
         switch ($event->type) {
             case 'checkout.session.completed':
                 $this->handleCheckoutCompleted($event);

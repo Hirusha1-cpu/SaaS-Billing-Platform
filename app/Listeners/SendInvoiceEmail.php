@@ -6,8 +6,9 @@ use App\Events\InvoiceSent;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
 
-class SendInvoiceEmail
+class SendInvoiceEmail implements ShouldQueue
 {
+    use InteractsWithQueue;
     /**
      * Create the event listener.
      */

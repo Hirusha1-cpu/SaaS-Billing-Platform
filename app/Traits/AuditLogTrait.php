@@ -2,7 +2,7 @@
 
 namespace App\Traits;
 
-use App\Models\AuditLog;
+use App\Jobs\LogAuditActivity;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Request;
 
@@ -10,12 +10,10 @@ trait AuditLogTrait
 {
     protected static function bootAuditLogTrait()
     {
-        // Log created
         static::created(function ($model) {
             static::logActivity($model, 'created', null, $model->toArray());
         });
 
-        // Log updated
         static::updated(function ($model) {
             static::logActivity(
                 $model,
@@ -25,7 +23,6 @@ trait AuditLogTrait
             );
         });
 
-        // Log deleted
         static::deleted(function ($model) {
             static::logActivity($model, 'deleted', $model->toArray(), null);
         });
@@ -33,18 +30,21 @@ trait AuditLogTrait
 
     protected static function logActivity($model, $action, $oldValues, $newValues)
     {
-        AuditLog::create([
-            'user_id' => Auth::id(),
-            'company_id' => $model->company_id ?? Auth::user()->company_id ?? null,
-            'action' => $action,
-            'model_type' => get_class($model),
-            'model_id' => $model->id,
-            'old_values' => $oldValues,
-            'new_values' => $newValues,
-            'ip_address' => Request::ip(),
-            'user_agent' => Request::userAgent(),
-            'url' => Request::fullUrl(),
-            'method' => Request::method(),
-        ]);
+        // request/session context තියෙනවද කියලා safe check (console/queue context නම් null)
+        $hasRequest = app()->bound('request') && Request::instance() !== null;
+
+        LogAuditActivity::dispatch(
+            userId: Auth::id(),
+            companyId: $model->company_id ?? (Auth::check() ? Auth::user()->company_id : null),
+            action: $action,
+            modelType: get_class($model),
+            modelId: $model->id,
+            oldValues: $oldValues,
+            newValues: $newValues,
+            ipAddress: $hasRequest ? Request::ip() : null,
+            userAgent: $hasRequest ? Request::userAgent() : null,
+            url: $hasRequest ? Request::fullUrl() : null,
+            method: $hasRequest ? Request::method() : null,
+        );
     }
 }

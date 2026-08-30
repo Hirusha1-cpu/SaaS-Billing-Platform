@@ -11,24 +11,32 @@ class LogUserActivity
 {
     public function handle(Request $request, Closure $next)
     {
+        $response = $next($request); // ⚠️ මේ line එක අනිවාර්යයෙන් ඕන - request එක process කරන්නේ මෙතනින්
+
         if (Auth::check()) {
-            try {
+            $userId = Auth::id();
+            $companyId = Auth::user()->company_id;
+            $routeName = $request->route()?->getName() ?? $request->path();
+            $ip = $request->ip();
+            $userAgent = $request->userAgent();
+            $url = $request->fullUrl();
+            $method = $request->method();
+
+            dispatch(function () use ($userId, $companyId, $routeName, $ip, $userAgent, $url, $method) {
                 UserActivity::create([
-                    'user_id' => Auth::id(),
-                    'company_id' => Auth::user()->company_id,
-                    'action' => $request->route()->getName() ?? $request->path(),
-                    'ip_address' => $request->ip(),
-                    'user_agent' => $request->userAgent(),
+                    'user_id' => $userId,
+                    'company_id' => $companyId,
+                    'action' => $routeName,
+                    'ip_address' => $ip,
+                    'user_agent' => $userAgent,
                     'details' => [
-                        'method' => $request->method(),
-                        'url' => $request->fullUrl(),
+                        'method' => $method,
+                        'url' => $url,
                     ],
                 ]);
-            } catch (\Exception $e) {
-                // Don't break the request if logging fails
-            }
+            })->afterResponse();
         }
 
-        return $next($request);
+        return $response;
     }
 }

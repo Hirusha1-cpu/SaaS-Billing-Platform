@@ -99,6 +99,9 @@ class PaymentService
         'cancel_url' => $baseUrl . '/payment/cancel',
         'metadata' => $metadata, 
         'customer_email' => $customerEmail,
+        'payment_intent_data' => [
+            'metadata' => $metadata,
+        ],
     ]);
 
     Log::info('Stripe checkout session created', [

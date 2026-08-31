@@ -15,6 +15,10 @@ use App\Http\Controllers\Api\{
     CompanyController
 };
 
+Route::get('/health', function () {
+    return response()->json(['status' => 'ok']);
+});
+
 // Public Routes
 Route::post('/auth/register', [AuthController::class, 'register']);
 Route::post('/auth/login', [AuthController::class, 'login']);

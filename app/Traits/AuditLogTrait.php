@@ -19,7 +19,7 @@ trait AuditLogTrait
                 $model,
                 'updated',
                 $model->getOriginal(),
-                $model->getChanges()
+                $model->getChanges() 
             );
         });
 

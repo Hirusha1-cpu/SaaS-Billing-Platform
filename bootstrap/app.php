@@ -65,9 +65,17 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         // ============ CSRF Exceptions ============
+        // 👇 CSRF exemption for API routes
         $middleware->validateCsrfTokens(except: [
+            'api/*',
+            'webhook/*',
             'api/webhook/stripe',
-            'api/webhook/paypal',
+            'webhook/stripe',
+        ]);
+        
+        // 👇 API middleware group එකට Sanctum එකතු කරන්න
+        $middleware->api(prepend: [
+            \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

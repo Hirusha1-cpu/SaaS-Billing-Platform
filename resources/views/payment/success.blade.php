@@ -17,11 +17,15 @@
             <h1 class="text-2xl font-bold text-gray-800 mb-2">✅ Payment Successful!</h1>
             <p class="text-gray-600 mb-4">Thank you for your payment. Your invoice has been paid.</p>
             <p class="text-sm text-gray-500 mb-6">Session ID: {{ request('session_id') }}</p>
+            
             <div class="space-y-3">
-                <a href="/dashboard" class="block w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition">
+                {{-- 👇 Vercel එකට point කරන්න --}}
+                <a href="{{ env('FRONTEND_URL', 'https://saa-s-billing-platform-gamma.vercel.app') }}/dashboard" 
+                   class="block w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition">
                     Go to Dashboard
                 </a>
-                <a href="/invoices" class="block w-full bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300 transition">
+                <a href="{{ env('FRONTEND_URL', 'https://saa-s-billing-platform-gamma.vercel.app') }}/invoices" 
+                   class="block w-full bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300 transition">
                     View Invoices
                 </a>
             </div>

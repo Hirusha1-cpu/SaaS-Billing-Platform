@@ -1,17 +1,5 @@
 {
-  "version": 2,
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/public/index.php"
-    },
-    {
-      "src": "/storage/(.*)",
-      "dest": "/public/storage/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/public/index.php"
-    }
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

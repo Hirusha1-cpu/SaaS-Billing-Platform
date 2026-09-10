@@ -15,6 +15,11 @@ COPY . .
 
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
+# --- Frontend build step (අලුතින් add කරන පොටක) ---
+RUN npm install
+RUN npm run build
+# ---------------------------------------------
+
 EXPOSE 8000
 
 CMD php artisan config:clear && \

@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../Utils/api';   // 👈 raw axios වෙනුවට මේක import කරන්න
 import toast from 'react-hot-toast';
 
 export const AuthContext = createContext();
@@ -11,7 +11,6 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       fetchUser();
     } else {
       setLoading(false);
@@ -20,7 +19,7 @@ export const AuthProvider = ({ children }) => {
 
   const fetchUser = async () => {
     try {
-      const response = await axios.get('/api/auth/user');
+      const response = await api.get('/auth/user');   // 👈 baseURL එකෙන්ම /api එකතු වෙනවා
       setUser(response.data.user);
     } catch (error) {
       logout();
@@ -31,14 +30,11 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      const response = await axios.post('/api/auth/login', { email, password });
+      const response = await api.post('/auth/login', { email, password });
       const { access_token, user } = response.data;
-      
       localStorage.setItem('token', access_token);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
       setToken(access_token);
       setUser(user);
-      
       toast.success('Login successful!');
       return { success: true };
     } catch (error) {
@@ -49,14 +45,11 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (data) => {
     try {
-      const response = await axios.post('/api/auth/register', data);
+      const response = await api.post('/auth/register', data);
       const { access_token, user } = response.data;
-      
       localStorage.setItem('token', access_token);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
       setToken(access_token);
       setUser(user);
-      
       toast.success('Registration successful!');
       return { success: true };
     } catch (error) {
@@ -67,20 +60,12 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     localStorage.removeItem('token');
-    delete axios.defaults.headers.common['Authorization'];
     setToken(null);
     setUser(null);
     toast.success('Logout successful');
   };
 
-  const value = {
-    user,
-    loading,
-    login,
-    register,
-    logout,
-    isAuthenticated: !!user,
-  };
+  const value = { user, loading, login, register, logout, isAuthenticated: !!user };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
